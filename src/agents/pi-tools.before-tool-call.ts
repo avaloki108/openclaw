@@ -1,4 +1,5 @@
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
+import { isSessionPinRequired, isSessionVerified } from "../gateway/session-auth.js";
 import type { SessionState } from "../logging/diagnostic-session-state.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
@@ -14,6 +15,11 @@ export type HookContext = {
   sessionId?: string;
   runId?: string;
   loopDetection?: ToolLoopDetectionConfig;
+  /**
+   * When true, the session requires PIN verification before any tool call.
+   * Set by createOpenClawCodingTools when session.auth.pin is configured.
+   */
+  pinRequired?: boolean;
 };
 
 type HookOutcome = { blocked: true; reason: string } | { blocked: false; params: unknown };
@@ -86,6 +92,9 @@ async function recordLoopOutcome(args: {
   }
 }
 
+/** Tool name exempted from the PIN gate — always callable to unlock a session. */
+const SESSION_VERIFY_PIN_TOOL = "session_verify_pin";
+
 export async function runBeforeToolCallHook(args: {
   toolName: string;
   params: unknown;
@@ -94,6 +103,23 @@ export async function runBeforeToolCallHook(args: {
 }): Promise<HookOutcome> {
   const toolName = normalizeToolName(args.toolName || "tool");
   const params = args.params;
+
+  // PIN auth gate: block all tools except session_verify_pin until the session
+  // is verified.  The check is intentionally first so it runs even if the
+  // session key is missing from other parts of the context.
+  if (
+    args.ctx?.pinRequired &&
+    toolName !== SESSION_VERIFY_PIN_TOOL &&
+    args.ctx.sessionKey &&
+    isSessionPinRequired(args.ctx.sessionKey) &&
+    !isSessionVerified(args.ctx.sessionKey)
+  ) {
+    return {
+      blocked: true,
+      reason:
+        "Session is locked. Please ask the user for the PIN and call session_verify_pin to unlock.",
+    };
+  }
 
   if (args.ctx?.sessionKey) {
     const { getDiagnosticSessionState, logToolLoopAction, detectToolCallLoop, recordToolCall } =

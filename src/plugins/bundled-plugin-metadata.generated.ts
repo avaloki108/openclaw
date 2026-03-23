@@ -3717,6 +3717,31 @@ export const GENERATED_BUNDLED_PLUGIN_METADATA = [
     },
   },
   {
+    dirName: "web3-audit",
+    idHint: "web3-audit",
+    source: {
+      source: "./index.ts",
+      built: "index.js",
+    },
+    packageName: "@openclaw/web3-audit",
+    packageVersion: "0.1.0",
+    packageDescription: "Skills and tools for Web3 contract auditing",
+    packageManifest: {
+      extensions: ["./index.ts"],
+    },
+    manifest: {
+      id: "web3-audit",
+      configSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+      },
+      skills: ["./skills"],
+      name: "Web3 Audit Tools",
+      description: "Skills and tools for Web3 auditing",
+    },
+  },
+  {
     dirName: "whatsapp",
     idHint: "whatsapp",
     source: {

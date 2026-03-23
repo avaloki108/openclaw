@@ -8677,6 +8677,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
       session: {
         type: "object",
         properties: {
+          auth: {
+            type: "object",
+            properties: {
+              pin: {
+                type: "string",
+              },
+            },
+            additionalProperties: false,
+          },
           scope: {
             anyOf: [
               {
@@ -16184,6 +16193,10 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
     "messages.tts.openai.apiKey": {
       sensitive: true,
       tags: ["security", "auth", "media"],
+    },
+    "session.auth.pin": {
+      sensitive: true,
+      tags: ["security", "storage"],
     },
     "channels.telegram.webhookSecret": {
       sensitive: true,

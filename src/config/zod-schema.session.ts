@@ -25,6 +25,13 @@ export const SessionSendPolicySchema = createAllowDenyChannelRulesSchema();
 
 export const SessionSchema = z
   .object({
+    auth: z
+      .object({
+        /** PIN required to unlock tool use for this session. Never echoed in logs or LLM context. */
+        pin: z.string().optional().register(sensitive),
+      })
+      .strict()
+      .optional(),
     scope: z.union([z.literal("per-sender"), z.literal("global")]).optional(),
     dmScope: z
       .union([

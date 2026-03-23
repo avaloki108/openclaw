@@ -102,7 +102,13 @@ export type SessionThreadBindingsConfig = {
   maxAgeHours?: number;
 };
 
+export type SessionAuthConfig = {
+  /** PIN required to unlock tool use for this session. Never echoed in logs or LLM context. */
+  pin?: string;
+};
+
 export type SessionConfig = {
+  auth?: SessionAuthConfig;
   scope?: SessionScope;
   /** DM session scoping (default: "main"). */
   dmScope?: DmScope;

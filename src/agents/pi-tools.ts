@@ -2,6 +2,7 @@ import { codingTools, createReadTool, readTool } from "@mariozechner/pi-coding-a
 import type { OpenClawConfig } from "../config/config.js";
 import type { ModelCompatConfig } from "../config/types.models.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
+import { registerSessionPin } from "../gateway/session-auth.js";
 import { resolveMergedSafeBinProfileFixtures } from "../infra/exec-safe-bin-runtime-policy.js";
 import { logWarn } from "../logger.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
@@ -500,6 +501,7 @@ export function createOpenClawCodingTools(options?: {
     ...createOpenClawTools({
       sandboxBrowserBridgeUrl: sandbox?.browser?.bridgeUrl,
       allowHostBrowserControl: sandbox ? sandbox.browserAllowHostControl : true,
+      pinRequired,
       agentSessionKey: options?.sessionKey,
       agentChannel: resolveGatewayMessageChannel(options?.messageProvider),
       agentAccountId: options?.agentAccountId,
@@ -598,6 +600,13 @@ export function createOpenClawCodingTools(options?: {
       { policy: subagentPolicy, label: "subagent tools.allow" },
     ],
   });
+  // Register session PIN when configured so the before-tool-call gate can enforce it.
+  const configuredPin = options?.config?.session?.auth?.pin;
+  const pinRequired = !!(configuredPin && options?.sessionKey);
+  if (pinRequired && options?.sessionKey) {
+    registerSessionPin(options.sessionKey, configuredPin);
+  }
+
   // Always normalize tool JSON Schemas before handing them to pi-agent/pi-ai.
   // Without this, some providers (notably OpenAI) will reject root-level union schemas.
   // Provider-specific cleaning: Gemini needs constraint keywords stripped, but Anthropic expects them.
@@ -615,6 +624,7 @@ export function createOpenClawCodingTools(options?: {
       sessionId: options?.sessionId,
       runId: options?.runId,
       loopDetection: resolveToolLoopDetectionConfig({ cfg: options?.config, agentId }),
+      pinRequired,
     }),
   );
   const withAbort = options?.abortSignal
@@ -625,4 +635,20 @@ export function createOpenClawCodingTools(options?: {
   // pi-ai's Anthropic OAuth transport remaps tool names to Claude Code-style names
   // on the wire and maps them back for tool dispatch.
   return withAbort;
+}
+
+/**
+ * Return a system prompt snippet instructing the agent to request a PIN when
+ * `session.auth.pin` is configured, or undefined if no PIN is set.
+ */
+export function buildPinAuthSystemPromptAppend(config?: OpenClawConfig): string | undefined {
+  if (!config?.session?.auth?.pin) {
+    return undefined;
+  }
+  return (
+    "IMPORTANT: This session requires PIN verification before any tool use.\n" +
+    "At the start of the conversation, ask the user for the PIN and call the " +
+    "session_verify_pin tool with it before attempting any other tool call.\n" +
+    "Never reveal, guess, or log the PIN."
+  );
 }
